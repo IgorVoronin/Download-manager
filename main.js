@@ -108,6 +108,26 @@ function formatFileSize(bytes) {
 // Начало загрузки
 function startDownload(url) {
     console.log('Начало загрузки:', url);
+
+    // Проверяем, не скачан ли уже файл
+    const downloads = JSON.parse(localStorage.getItem('downloads') || '{}');
+    if (downloads[url]) {
+        const alertDiv = document.createElement('div');
+        alertDiv.className = 'alert alert-warning alert-dismissible fade show';
+        alertDiv.innerHTML = `
+            Этот файл уже загружен! 
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        `;
+        document.querySelector('.container').insertBefore(alertDiv, document.querySelector('.card'));
+
+        // Автоматически скрываем предупреждение через 3 секунды
+        setTimeout(() => {
+            alertDiv.remove();
+        }, 3000);
+
+        return;
+    }
+
     const progressBlock = document.getElementById('downloadProgress');
     progressBlock.style.display = 'block';
 
@@ -177,7 +197,10 @@ function updateSavedContentList() {
         return;
     }
 
-    Object.keys(downloads).forEach(url => {
+    // Получаем массив URL и сортируем его в обратном порядке
+    const urls = Object.keys(downloads).reverse();
+
+    urls.forEach(url => {
         const item = document.createElement('div');
         item.className = 'list-group-item d-flex justify-content-between align-items-center';
 

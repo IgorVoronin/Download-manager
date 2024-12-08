@@ -4,16 +4,16 @@ module.exports = {
 
     // Настройки загрузки
     download: {
-        maxThreads: 3, // Максимальное количество одновременных потоков
-        speedLimitPerThread: 1024 * 1024, // Ограничение скорости на поток (1 MB/s)
-        chunkSize: 1024 * 1024 // Размер чанка для загрузки (1 MB)
+        maxThreads: 3,
+        speedLimitPerThread: 1024 * 1024,
+        chunkSize: 1024 * 1024
     },
 
     // Ключевые слова и соответствующие им URL
     keywords: {
         'javascript': [
-            'https://raw.githubusercontent.com/getify/You-Dont-Know-JS/master/scope%20%26%20closures/README.md',
-            'https://raw.githubusercontent.com/getify/You-Dont-Know-JS/master/this%20%26%20object%20prototypes/README.md'
+            'https://raw.githubusercontent.com/getify/You-Dont-Know-JS/2nd-ed/scope-closures/README.md',
+            'https://raw.githubusercontent.com/getify/You-Dont-Know-JS/2nd-ed/get-started/README.md'
         ],
         'python': [
             'https://raw.githubusercontent.com/python/cpython/main/README.rst',
