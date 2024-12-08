@@ -41,37 +41,35 @@
 
 /* Стили для просмотра контента */
 .content-preview {
+    padding: 15px;
+}
+
+/* Для текстового контента */
+.content-preview:not(:has(img)) {
     white-space: pre-wrap;
     word-wrap: break-word;
-    max-height: 70vh;
-    overflow-y: auto;
     font-family: monospace;
     font-size: 14px;
     line-height: 1.5;
-    padding: 15px;
     background-color: #f8f9fa;
     border-radius: 4px;
-    margin: 0;
+    text-align: left;
 }
 
-/* Стили для прогресс-бара */
-.progress-bar {
-    transition: width 0.3s ease-in-out;
-}
-
-.download-info .row {
-    background-color: #f8f9fa;
-    padding: 10px;
+/* Для изображений */
+.content-preview img {
+    max-width: 100%;
+    height: auto;
     border-radius: 4px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
-.download-info strong {
-    color: #0d6efd;
+/* Стили для модального окна */
+.modal-xl {
+    max-width: 90vw;
 }
 
-/* Анимация для прогресс-бара */
-@keyframes progress-bar-stripes {
-    0% {
-        background-position-x: 1rem;
-    }
+.modal-body {
+    max-height: 80vh;
+    overflow-y: auto;
 }

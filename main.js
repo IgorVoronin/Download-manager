@@ -60,7 +60,16 @@ function handleServerMessage(data) {
             break;
         case 'downloadComplete':
             console.log('Загрузка завершена для URL:', data.url);
-            handleDownloadComplete(data.content, data.url);
+            handleDownloadComplete(data.content, data.url, data.isImage);
+            break;
+        case 'error':
+            console.error('Получена ошибка:', data.message);
+            document.querySelector('.download-info').innerHTML += `
+                <div class="alert alert-danger mt-3">
+                    ${data.message}
+                    <button type="button" class="btn btn-primary btn-sm ms-3" onclick="hideProgress()">Закрыть</button>
+                </div>
+            `;
             break;
         default:
             console.log('Получено неизвестное сообщение:', data);
@@ -160,24 +169,72 @@ function updateDownloadProgress(progress) {
     document.getElementById('progressPercent').textContent = percent;
 }
 
+// Функция для очистки старых загрузок
+function cleanupOldDownloads() {
+    try {
+        const downloads = JSON.parse(localStorage.getItem('downloads') || '{}');
+        const entries = Object.entries(downloads);
+
+        if (entries.length > 5) { // Оставляем только 5 последних загрузок
+            // Сортируем по времени загрузки
+            entries.sort((a, b) => (b[1].timestamp || 0) - (a[1].timestamp || 0));
+
+            // Создаем новый объект с последними 5 загрузками
+            const newDownloads = Object.fromEntries(entries.slice(0, 5));
+            localStorage.setItem('downloads', JSON.stringify(newDownloads));
+
+            console.log('Очищены старые загрузки, оставлены последние 5');
+        }
+    } catch (error) {
+        console.error('Ошибка при очистке старых загрузок:', error);
+    }
+}
+
 // Обработка завершения загрузки
-function handleDownloadComplete(content, url) {
+function handleDownloadComplete(content, url, isImage) {
     console.log('Загрузка завершена для:', url);
-    // Сохранение в LocalStorage
-    const downloads = JSON.parse(localStorage.getItem('downloads') || '{}');
-    downloads[url] = content;
-    localStorage.setItem('downloads', JSON.stringify(downloads));
 
-    // Обновляем список и показываем уведомление
-    updateSavedContentList();
+    try {
+        // Пытаемся сохранить новую загрузку
+        const downloads = JSON.parse(localStorage.getItem('downloads') || '{}');
+        downloads[url] = {
+            content: content,
+            isImage: isImage,
+            timestamp: Date.now()
+        };
 
-    // Добавляем сообщение об успешной загрузке в блок прогресса
-    document.querySelector('.download-info').innerHTML += `
-        <div class="alert alert-success mt-3">
-            Загрузка завершена успешно!
-            <button type="button" class="btn btn-primary btn-sm ms-3" onclick="hideProgress()">Закрыть</button>
-        </div>
-    `;
+        try {
+            localStorage.setItem('downloads', JSON.stringify(downloads));
+        } catch (e) {
+            if (e.name === 'QuotaExceededError') {
+                console.log('Превышена квота хранилища, очищаем старые загрузки');
+                cleanupOldDownloads();
+                // Пробуем сохранить снова
+                localStorage.setItem('downloads', JSON.stringify(downloads));
+            } else {
+                throw e;
+            }
+        }
+
+        // Обновляем список и показываем уведомление
+        updateSavedContentList();
+
+        // Добавляем сообщение об успешной загрузке в блок прогресса
+        document.querySelector('.download-info').innerHTML += `
+            <div class="alert alert-success mt-3">
+                Загрузка завершена успешно!
+                <button type="button" class="btn btn-primary btn-sm ms-3" onclick="hideProgress()">Закрыть</button>
+            </div>
+        `;
+    } catch (error) {
+        console.error('Ошибка при сохранении:', error);
+        document.querySelector('.download-info').innerHTML += `
+            <div class="alert alert-danger mt-3">
+                Ошибка при сохранении: ${error.message}
+                <button type="button" class="btn btn-primary btn-sm ms-3" onclick="hideProgress()">Закрыть</button>
+            </div>
+        `;
+    }
 }
 
 // Функция скрытия прогресса
@@ -197,8 +254,10 @@ function updateSavedContentList() {
         return;
     }
 
-    // Получаем массив URL и сортируем его в обратном порядке
-    const urls = Object.keys(downloads).reverse();
+    // Получаем массив URL и сортируем его в обратном порядке по времени
+    const urls = Object.entries(downloads)
+        .sort((a, b) => (b[1].timestamp || 0) - (a[1].timestamp || 0))
+        .map(entry => entry[0]);
 
     urls.forEach(url => {
         const item = document.createElement('div');
@@ -253,40 +312,29 @@ function showSavedContent(url) {
 
     const modalContent = document.getElementById('modalContent');
     if (item.isImage) {
-        // Для изображений создаем элемент img
-        modalContent.innerHTML = `<img src="data:image/jpeg;base64,${item.content}" class="img-fluid" alt="Downloaded image">`;
+        // Определяем тип изображения из URL
+        let imageType = 'jpeg'; // по умолчанию
+        if (url.toLowerCase().endsWith('.png')) {
+            imageType = 'png';
+        } else if (url.toLowerCase().endsWith('.gif')) {
+            imageType = 'gif';
+        }
+
+        // Создаем элемент изображения
+        modalContent.innerHTML = `
+            <img src="data:image/${imageType};base64,${item.content}" 
+                 class="img-fluid" 
+                 alt="Загруженное изображение"
+                 style="max-width: 100%; height: auto;">
+        `;
     } else {
-        // Для текста используем pre
+        // Для текстового контента
         modalContent.innerHTML = '';
         modalContent.textContent = item.content;
     }
 
     // Показываем модальное окно
     contentModal.show();
-}
-
-// Обработка завершения загрузки
-function handleDownloadComplete(content, url, isImage) {
-    console.log('Загрузка завершена для:', url);
-    // Сохранение в LocalStorage
-    const downloads = JSON.parse(localStorage.getItem('downloads') || '{}');
-    downloads[url] = {
-        content: content,
-        isImage: isImage,
-        timestamp: Date.now()
-    };
-    localStorage.setItem('downloads', JSON.stringify(downloads));
-
-    // Обновляем список и показываем уведомление
-    updateSavedContentList();
-
-    // Добавляем сообщение об успешной загрузке в блок прогресса
-    document.querySelector('.download-info').innerHTML += `
-        <div class="alert alert-success mt-3">
-            Загрузка завершена успешно!
-            <button type="button" class="btn btn-primary btn-sm ms-3" onclick="hideProgress()">Закрыть</button>
-        </div>
-    `;
 }
 
 // Функция для выполнения поиска
