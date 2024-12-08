@@ -74,6 +74,12 @@ function displayUrlList(urls) {
     const urlList = document.getElementById('urlList');
     urlList.innerHTML = '';
 
+    if (!urls || urls.length === 0) {
+        urlList.innerHTML = '<div class="alert alert-info">По данному ключевому слову ничего не найдено</div>';
+        urlListCard.style.display = 'block';
+        return;
+    }
+
     urls.forEach(url => {
         const item = document.createElement('a');
         item.href = '#';
@@ -88,6 +94,73 @@ function displayUrlList(urls) {
     });
 
     urlListCard.style.display = 'block';
+}
+
+// Форматирование размера файла
+function formatFileSize(bytes) {
+    if (bytes === 0) return '0 Байт';
+    const k = 1024;
+    const sizes = ['Байт', 'КБ', 'МБ', 'ГБ'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+}
+
+// Обновление прогресса загрузки
+function updateDownloadProgress(progress) {
+    console.log('Обновление прогресса:', progress);
+    const percent = Math.min(Math.round((progress.downloadedSize / progress.totalSize) * 100), 100);
+
+    document.querySelector('.progress-bar').style.width = `${percent}%`;
+    document.querySelector('.progress-bar').setAttribute('aria-valuenow', percent);
+    document.getElementById('fileSize').textContent = formatFileSize(progress.totalSize);
+    document.getElementById('activeThreads').textContent = progress.activeThreads;
+    document.getElementById('progressPercent').textContent = percent;
+}
+
+// Обновление списка сохраненного контента
+function updateSavedContentList() {
+    console.log('Обновление списка сохраненного контента');
+    const savedContent = document.getElementById('savedContent');
+    const downloads = JSON.parse(localStorage.getItem('downloads') || '{}');
+
+    savedContent.innerHTML = '';
+    if (Object.keys(downloads).length === 0) {
+        savedContent.innerHTML = '<div class="alert alert-info">Нет сохраненного контента</div>';
+        return;
+    }
+
+    Object.keys(downloads).forEach(url => {
+        const item = document.createElement('div');
+        item.className = 'list-group-item d-flex justify-content-between align-items-center';
+
+        const link = document.createElement('a');
+        link.href = '#';
+        link.className = 'flex-grow-1 text-decoration-none';
+        link.textContent = url;
+        link.onclick = (e) => {
+            e.preventDefault();
+            showSavedContent(url);
+        };
+
+        const deleteBtn = document.createElement('button');
+        deleteBtn.className = 'btn btn-danger btn-sm ms-2';
+        deleteBtn.innerHTML = '<i class="bi bi-trash"></i> Удалить';
+        deleteBtn.onclick = () => deleteSavedContent(url);
+
+        item.appendChild(link);
+        item.appendChild(deleteBtn);
+        savedContent.appendChild(item);
+    });
+}
+
+// Удаление сохраненного контента
+function deleteSavedContent(url) {
+    if (confirm('Вы уверены, что хотите удалить этот контент?')) {
+        const downloads = JSON.parse(localStorage.getItem('downloads') || '{}');
+        delete downloads[url];
+        localStorage.setItem('downloads', JSON.stringify(downloads));
+        updateSavedContentList();
+    }
 }
 
 // Функция для выполнения поиска
