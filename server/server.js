@@ -41,13 +41,19 @@ class DownloadManager {
         this.activeThreads = 0;
         this.totalSize = 0;
         this.downloadedSize = 0;
-        this.isImage = url.match(/\.(jpg|jpeg|png|gif)$/i);
+        this.isImage = url.match(/\.(jpg|jpeg|png|gif)$/i) || url.includes('~orig');
     }
 
     async start() {
         try {
             // Получаем размер файла
-            const response = await fetch(this.url, { method: 'HEAD' });
+            const response = await fetch(this.url, {
+                method: 'HEAD',
+                headers: {
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+                }
+            });
+
             if (!response.ok) {
                 throw new Error(`Ошибка загрузки файла: ${response.status} ${response.statusText}`);
             }
@@ -57,22 +63,20 @@ class DownloadManager {
 
             if (this.totalSize === 0) {
                 // Если размер неизвестен, загружаем файл целиком
-                const fullResponse = await fetch(this.url);
+                const fullResponse = await fetch(this.url, {
+                    headers: {
+                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+                    }
+                });
+
                 if (!fullResponse.ok) {
                     throw new Error(`Ошибка загрузки файла: ${fullResponse.status} ${fullResponse.statusText}`);
                 }
 
-                let content;
-                if (this.isImage) {
-                    const buffer = await fullResponse.buffer();
-                    content = buffer.toString('base64');
-                } else {
-                    content = await fullResponse.text();
-                }
-
+                const buffer = await fullResponse.buffer();
                 this.ws.send(JSON.stringify({
                     type: 'downloadComplete',
-                    content: content,
+                    content: buffer.toString('base64'),
                     url: this.url,
                     isImage: this.isImage
                 }));
@@ -105,7 +109,10 @@ class DownloadManager {
 
         try {
             const response = await fetch(this.url, {
-                headers: { Range: `bytes=${start}-${end}` }
+                headers: {
+                    'Range': `bytes=${start}-${end}`,
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+                }
             });
 
             if (!response.ok) {
