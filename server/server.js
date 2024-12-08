@@ -26,7 +26,9 @@ const wss = new WebSocket.Server({
     server,
     verifyClient: (info) => {
         const origin = info.origin;
-        return origin === 'https://igorvoronin.github.io' || origin === 'http://localhost:3000';
+        return origin === 'https://igorvoronin.github.io' ||
+            origin === 'http://localhost:3000' ||
+            origin === 'https://download-manager.onrender.com';
     }
 });
 
