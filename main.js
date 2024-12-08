@@ -105,6 +105,29 @@ function formatFileSize(bytes) {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
 }
 
+// Начало загрузки
+function startDownload(url) {
+    console.log('Начало загрузки:', url);
+    const progressBlock = document.getElementById('downloadProgress');
+    progressBlock.style.display = 'block';
+
+    // Сбрасываем прогресс
+    document.querySelector('.progress-bar').style.width = '0%';
+    document.querySelector('.progress-bar').setAttribute('aria-valuenow', 0);
+    document.getElementById('fileSize').textContent = '0 Байт';
+    document.getElementById('activeThreads').textContent = '0';
+    document.getElementById('progressPercent').textContent = '0';
+
+    // Удаляем предыдущие сообщения об успешной загрузке
+    const successMessages = progressBlock.querySelectorAll('.alert');
+    successMessages.forEach(msg => msg.remove());
+
+    ws.send(JSON.stringify({
+        type: 'startDownload',
+        url: url
+    }));
+}
+
 // Обновление прогресса загрузки
 function updateDownloadProgress(progress) {
     console.log('Обновление прогресса:', progress);
@@ -115,6 +138,31 @@ function updateDownloadProgress(progress) {
     document.getElementById('fileSize').textContent = formatFileSize(progress.totalSize);
     document.getElementById('activeThreads').textContent = progress.activeThreads;
     document.getElementById('progressPercent').textContent = percent;
+}
+
+// Обработка завершения загрузки
+function handleDownloadComplete(content, url) {
+    console.log('Загрузка завершена для:', url);
+    // Сохранение в LocalStorage
+    const downloads = JSON.parse(localStorage.getItem('downloads') || '{}');
+    downloads[url] = content;
+    localStorage.setItem('downloads', JSON.stringify(downloads));
+
+    // Обновляем список и показываем уведомление
+    updateSavedContentList();
+
+    // Добавляем сообщение об успешной загрузке в блок прогресса
+    document.querySelector('.download-info').innerHTML += `
+        <div class="alert alert-success mt-3">
+            Загрузка завершена успешно!
+            <button type="button" class="btn btn-primary btn-sm ms-3" onclick="hideProgress()">Закрыть</button>
+        </div>
+    `;
+}
+
+// Функция скрытия прогресса
+function hideProgress() {
+    document.getElementById('downloadProgress').style.display = 'none';
 }
 
 // Обновление списка сохраненного контента
@@ -163,96 +211,6 @@ function deleteSavedContent(url) {
     }
 }
 
-// Функция для выполнения поиска
-function performSearch() {
-    const keyword = document.getElementById('keywordInput').value.trim();
-    if (keyword) {
-        console.log('Отправка запроса поиска для:', keyword);
-        ws.send(JSON.stringify({
-            type: 'search',
-            keyword: keyword
-        }));
-    }
-}
-
-// Начало загрузки
-function startDownload(url) {
-    console.log('Начало загрузки:', url);
-    const progressBlock = document.getElementById('downloadProgress');
-    progressBlock.style.display = 'block';
-
-    // Сбрасываем прогресс
-    document.querySelector('.progress-bar').style.width = '0%';
-    document.querySelector('.progress-bar').setAttribute('aria-valuenow', 0);
-    document.getElementById('fileSize').textContent = '0';
-    document.getElementById('activeThreads').textContent = '0';
-    document.getElementById('progressPercent').textContent = '0';
-
-    // Удаляем предыдущие сообщения об успешной загрузке
-    const successMessages = progressBlock.querySelectorAll('.alert');
-    successMessages.forEach(msg => msg.remove());
-
-    ws.send(JSON.stringify({
-        type: 'startDownload',
-        url: url
-    }));
-}
-
-// Обновление прогресса загрузки
-function updateDownloadProgress(progress) {
-    console.log('Обновление прогресса:', progress);
-    document.querySelector('.progress-bar').style.width = `${progress.percent}%`;
-    document.querySelector('.progress-bar').setAttribute('aria-valuenow', progress.percent);
-    document.getElementById('fileSize').textContent = (progress.totalSize / (1024 * 1024)).toFixed(2);
-    document.getElementById('activeThreads').textContent = progress.activeThreads;
-    document.getElementById('progressPercent').textContent = progress.percent;
-}
-
-// Обработка завершения загрузки
-function handleDownloadComplete(content, url) {
-    console.log('Загрузка завершена для:', url);
-    // Сохранение в LocalStorage
-    const downloads = JSON.parse(localStorage.getItem('downloads') || '{}');
-    downloads[url] = content;
-    localStorage.setItem('downloads', JSON.stringify(downloads));
-
-    // Обновляем список и показываем уведомление
-    updateSavedContentList();
-
-    // Добавляем сообщение об успешной загрузке в блок прогресса
-    document.querySelector('.download-info').innerHTML += `
-        <div class="alert alert-success mt-3">
-            Загрузка завершена успешно!
-            <button type="button" class="btn btn-primary btn-sm ms-3" onclick="hideProgress()">Закрыть</button>
-        </div>
-    `;
-}
-
-// Функция скрытия прогресса
-function hideProgress() {
-    document.getElementById('downloadProgress').style.display = 'none';
-}
-
-// Обновление списка сохраненного контента
-function updateSavedContentList() {
-    console.log('Обновление списка сохраненного контента');
-    const savedContent = document.getElementById('savedContent');
-    const downloads = JSON.parse(localStorage.getItem('downloads') || '{}');
-
-    savedContent.innerHTML = '';
-    Object.keys(downloads).forEach(url => {
-        const item = document.createElement('a');
-        item.href = '#';
-        item.className = 'list-group-item list-group-item-action';
-        item.textContent = url;
-        item.onclick = (e) => {
-            e.preventDefault();
-            showSavedContent(url);
-        };
-        savedContent.appendChild(item);
-    });
-}
-
 // Показ сохраненного контента
 function showSavedContent(url) {
     console.log('Показ сохраненного контента для URL:', url);
@@ -270,6 +228,18 @@ function showSavedContent(url) {
 
     // Показываем модальное окно
     contentModal.show();
+}
+
+// Функция для выполнения поиска
+function performSearch() {
+    const keyword = document.getElementById('keywordInput').value.trim();
+    if (keyword) {
+        console.log('Отправка запроса поиска для:', keyword);
+        ws.send(JSON.stringify({
+            type: 'search',
+            keyword: keyword
+        }));
+    }
 }
 
 // Инициализация при загрузке страницы
