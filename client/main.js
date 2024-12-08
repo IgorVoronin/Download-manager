@@ -1,13 +1,23 @@
 // Конфигурация WebSocket
-const WS_URL = 'wss://your-server-url.com'; // Здесь будет URL вашего сервера
+const WS_URL = 'wss://https://download-manager.onrender.com';
 let ws = null;
+let reconnectAttempts = 0;
+const maxReconnectAttempts = 5;
 
 // Инициализация WebSocket соединения
 function initWebSocket() {
+
+    if (reconnectAttempts >= maxReconnectAttempts) {
+        alert('Не удалось подключиться к серверу. Пожалуйста, обновите страницу.');
+        return;
+    }
+
     ws = new WebSocket(WS_URL);
 
     ws.onopen = () => {
         console.log('WebSocket соединение установлено');
+        reconnectAttempts = 0;
+        document.getElementById('searchBtn').disabled = false;
     };
 
     ws.onmessage = (event) => {
