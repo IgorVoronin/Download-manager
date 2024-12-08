@@ -238,7 +238,12 @@ function deleteSavedContent(url) {
 function showSavedContent(url) {
     console.log('Показ сохраненного контента для URL:', url);
     const downloads = JSON.parse(localStorage.getItem('downloads') || '{}');
-    const content = downloads[url];
+    const item = downloads[url];
+
+    if (!item || !item.content) {
+        alert('Ошибка: контент не найден');
+        return;
+    }
 
     // Получаем модальное окно
     const contentModal = new bootstrap.Modal(document.getElementById('contentModal'));
@@ -246,11 +251,42 @@ function showSavedContent(url) {
     // Устанавливаем заголовок
     document.querySelector('.modal-title').textContent = 'Просмотр: ' + url;
 
-    // Устанавливаем контент
-    document.getElementById('modalContent').textContent = content;
+    const modalContent = document.getElementById('modalContent');
+    if (item.isImage) {
+        // Для изображений создаем элемент img
+        modalContent.innerHTML = `<img src="data:image/jpeg;base64,${item.content}" class="img-fluid" alt="Downloaded image">`;
+    } else {
+        // Для текста используем pre
+        modalContent.innerHTML = '';
+        modalContent.textContent = item.content;
+    }
 
     // Показываем модальное окно
     contentModal.show();
+}
+
+// Обработка завершения загрузки
+function handleDownloadComplete(content, url, isImage) {
+    console.log('Загрузка завершена для:', url);
+    // Сохранение в LocalStorage
+    const downloads = JSON.parse(localStorage.getItem('downloads') || '{}');
+    downloads[url] = {
+        content: content,
+        isImage: isImage,
+        timestamp: Date.now()
+    };
+    localStorage.setItem('downloads', JSON.stringify(downloads));
+
+    // Обновляем список и показываем уведомление
+    updateSavedContentList();
+
+    // Добавляем сообщение об успешной загрузке в блок прогресса
+    document.querySelector('.download-info').innerHTML += `
+        <div class="alert alert-success mt-3">
+            Загрузка завершена успешно!
+            <button type="button" class="btn btn-primary btn-sm ms-3" onclick="hideProgress()">Закрыть</button>
+        </div>
+    `;
 }
 
 // Функция для выполнения поиска

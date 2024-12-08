@@ -5,8 +5,10 @@ const fetch = require('node-fetch');
 const config = require('./config');
 
 const app = express();
+
+// Настройка CORS для всех запросов
 app.use(cors({
-    origin: ['https://igorvoronin.github.io', 'http://localhost:3000'],
+    origin: '*',
     methods: ['GET', 'POST', 'OPTIONS'],
     credentials: true
 }));
@@ -25,10 +27,8 @@ const server = app.listen(config.port, () => {
 const wss = new WebSocket.Server({
     server,
     verifyClient: (info) => {
-        const origin = info.origin;
-        return origin === 'https://igorvoronin.github.io' ||
-            origin === 'http://localhost:3000' ||
-            origin === 'https://download-manager.onrender.com';
+        console.log('Попытка подключения от:', info.origin);
+        return true;
     }
 });
 
@@ -41,16 +41,42 @@ class DownloadManager {
         this.activeThreads = 0;
         this.totalSize = 0;
         this.downloadedSize = 0;
+        this.isImage = url.match(/\.(jpg|jpeg|png|gif)$/i);
     }
 
     async start() {
         try {
             // Получаем размер файла
             const response = await fetch(this.url, { method: 'HEAD' });
+            if (!response.ok) {
+                throw new Error(`Ошибка загрузки файла: ${response.status} ${response.statusText}`);
+            }
+
             this.totalSize = parseInt(response.headers.get('content-length') || '0');
+            console.log('Общий размер файла:', this.totalSize);
 
             if (this.totalSize === 0) {
-                throw new Error('Не удалось определить размер файла');
+                // Если размер неизвестен, загружаем файл целиком
+                const fullResponse = await fetch(this.url);
+                if (!fullResponse.ok) {
+                    throw new Error(`Ошибка загрузки файла: ${fullResponse.status} ${fullResponse.statusText}`);
+                }
+
+                let content;
+                if (this.isImage) {
+                    const buffer = await fullResponse.buffer();
+                    content = buffer.toString('base64');
+                } else {
+                    content = await fullResponse.text();
+                }
+
+                this.ws.send(JSON.stringify({
+                    type: 'downloadComplete',
+                    content: content,
+                    url: this.url,
+                    isImage: this.isImage
+                }));
+                return;
             }
 
             // Разбиваем файл на чанки
@@ -62,6 +88,7 @@ class DownloadManager {
                 this.downloadChunk(i * chunkSize, (i + 1) * chunkSize - 1);
             }
         } catch (error) {
+            console.error('Ошибка при загрузке:', error);
             this.ws.send(JSON.stringify({
                 type: 'error',
                 message: error.message
@@ -81,6 +108,10 @@ class DownloadManager {
                 headers: { Range: `bytes=${start}-${end}` }
             });
 
+            if (!response.ok) {
+                throw new Error(`Ошибка загрузки чанка: ${response.status} ${response.statusText}`);
+            }
+
             const buffer = await response.buffer();
             this.chunks.push({ start, buffer });
             this.downloadedSize += buffer.length;
@@ -97,9 +128,13 @@ class DownloadManager {
                 this.downloadChunk(nextStart, nextStart + config.download.chunkSize - 1);
             }
         } catch (error) {
+            console.error('Ошибка при загрузке чанка:', error);
             this.activeThreads--;
             this.sendProgress();
-            console.error('Ошибка загрузки чанка:', error);
+            this.ws.send(JSON.stringify({
+                type: 'error',
+                message: error.message
+            }));
         }
     }
 
@@ -107,10 +142,10 @@ class DownloadManager {
         this.ws.send(JSON.stringify({
             type: 'downloadProgress',
             progress: {
-                percent: Math.round((this.downloadedSize / this.totalSize) * 100),
                 totalSize: this.totalSize,
                 downloadedSize: this.downloadedSize,
-                activeThreads: this.activeThreads
+                activeThreads: this.activeThreads,
+                percent: Math.round((this.downloadedSize / this.totalSize) * 100)
             }
         }));
     }
@@ -120,12 +155,20 @@ class DownloadManager {
         this.chunks.sort((a, b) => a.start - b.start);
 
         // Собираем содержимое
-        const content = Buffer.concat(this.chunks.map(chunk => chunk.buffer)).toString();
+        const buffer = Buffer.concat(this.chunks.map(chunk => chunk.buffer));
+        let content;
+
+        if (this.isImage) {
+            content = buffer.toString('base64');
+        } else {
+            content = buffer.toString('utf-8');
+        }
 
         this.ws.send(JSON.stringify({
             type: 'downloadComplete',
             content: content,
-            url: this.url
+            url: this.url,
+            isImage: this.isImage
         }));
     }
 }
