@@ -35,6 +35,7 @@
 
 ## Доступные ключевые слова
 
+- image
 - javascript
 - python
 - linux
