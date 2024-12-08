@@ -6,7 +6,6 @@ const maxReconnectAttempts = 5;
 
 // Инициализация WebSocket соединения
 function initWebSocket() {
-
     if (reconnectAttempts >= maxReconnectAttempts) {
         alert('Не удалось подключиться к серверу. Пожалуйста, обновите страницу.');
         return;
@@ -27,11 +26,13 @@ function initWebSocket() {
 
     ws.onerror = (error) => {
         console.error('WebSocket ошибка:', error);
+        document.getElementById('searchBtn').disabled = true;
     };
 
     ws.onclose = () => {
         console.log('WebSocket соединение закрыто');
-        // Попытка переподключения через 5 секунд
+        document.getElementById('searchBtn').disabled = true;
+        reconnectAttempts++;
         setTimeout(initWebSocket, 5000);
     };
 }

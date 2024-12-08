@@ -5,15 +5,30 @@ const fetch = require('node-fetch');
 const config = require('./config');
 
 const app = express();
-app.use(cors());
+app.use(cors({
+    origin: ['https://igorvoronin.github.io', 'http://localhost:3000'],
+    methods: ['GET', 'POST', 'OPTIONS'],
+    credentials: true
+}));
+
+// Базовый маршрут для проверки работоспособности
+app.get('/', (req, res) => {
+    res.json({ status: 'Server is running' });
+});
 
 // Создаем HTTP сервер
 const server = app.listen(config.port, () => {
     console.log(`Сервер запущен на порту ${config.port}`);
 });
 
-// Создаем WebSocket сервер
-const wss = new WebSocket.Server({ server });
+// Создаем WebSocket сервер с настройками
+const wss = new WebSocket.Server({
+    server,
+    verifyClient: (info) => {
+        const origin = info.origin;
+        return origin === 'https://igorvoronin.github.io' || origin === 'http://localhost:3000';
+    }
+});
 
 // Класс для управления загрузкой
 class DownloadManager {
