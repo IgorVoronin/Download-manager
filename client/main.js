@@ -1,5 +1,5 @@
 // Конфигурация WebSocket
-const WS_URL = 'wss://https://download-manager.onrender.com';
+const WS_URL = 'wss://download-manager.onrender.com';
 let ws = null;
 let reconnectAttempts = 0;
 const maxReconnectAttempts = 5;
