@@ -48,18 +48,14 @@ function initWebSocket() {
 
 // Обработка сообщений от сервера
 function handleServerMessage(data) {
-    console.log('Обработка сообщения типа:', data.type);
     switch (data.type) {
         case 'urlList':
-            console.log('Получен список URL:', data.urls);
             displayUrlList(data.urls);
             break;
         case 'downloadProgress':
-            console.log('Прогресс загрузки:', data.progress);
             updateDownloadProgress(data.progress);
             break;
         case 'downloadComplete':
-            console.log('Загрузка завершена для URL:', data.url);
             handleDownloadComplete(data.content, data.url, data.isImage);
             break;
         case 'error':
@@ -71,8 +67,6 @@ function handleServerMessage(data) {
                 </div>
             `;
             break;
-        default:
-            console.log('Получено неизвестное сообщение:', data);
     }
 }
 
