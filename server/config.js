@@ -6,7 +6,8 @@ module.exports = {
     download: {
         maxThreads: 3,
         speedLimitPerThread: 1024 * 1024,
-        chunkSize: 1024 * 1024
+        chunkSize: 1024 * 1024,
+        progressUpdateInterval: 100
     },
 
     // Ключевые слова и соответствующие им URL

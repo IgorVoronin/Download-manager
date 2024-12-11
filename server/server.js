@@ -119,9 +119,28 @@ class DownloadManager {
                 throw new Error(`Ошибка загрузки чанка: ${response.status} ${response.statusText}`);
             }
 
-            const buffer = await response.buffer();
-            this.chunks.push({ start, buffer });
-            this.downloadedSize += buffer.length;
+            // Создаем читаемый поток
+            const reader = response.body.getReader();
+            let receivedLength = 0;
+
+            // Читаем данные по частям
+            while (true) {
+                const { done, value } = await reader.read();
+
+                if (done) break;
+
+                receivedLength += value.length;
+                this.downloadedSize += value.length;
+
+                // Отправляем обновление прогресса после каждого полученного чанка данных
+                this.sendProgress();
+
+                // Сохраняем полученные данные
+                this.chunks.push({
+                    start: start + receivedLength - value.length,
+                    buffer: Buffer.from(value)
+                });
+            }
 
             this.activeThreads--;
             this.sendProgress();
