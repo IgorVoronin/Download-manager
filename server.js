@@ -37,10 +37,11 @@ class DownloadManager {
         this.downloadedSize = 0;
         this.isImage = url.match(/\.(jpg|jpeg|png|gif)$/i) || url.includes('~orig');
         this.lastProgressUpdate = 0;
+        this.isCompleted = false;
     }
 
     async downloadChunk(start, end) {
-        if (start >= this.totalSize) return;
+        if (start >= this.totalSize || this.isCompleted) return;
         end = Math.min(end, this.totalSize - 1);
 
         this.activeThreads++;
@@ -86,7 +87,8 @@ class DownloadManager {
 
             this.activeThreads--;
 
-            if (this.downloadedSize >= this.totalSize) {
+            if (this.downloadedSize >= this.totalSize && !this.isCompleted) {
+                this.isCompleted = true;
                 this.completeDownload();
             } else if (this.activeThreads < config.download.maxThreads) {
                 const nextStart = Math.max(...this.chunks.map(c => c.start)) + config.download.chunkSize;
@@ -101,6 +103,29 @@ class DownloadManager {
                 message: error.message
             }));
         }
+    }
+
+    completeDownload() {
+        if (this.isCompleted) return;
+        this.isCompleted = true;
+
+        this.chunks.sort((a, b) => a.start - b.start);
+
+        const buffer = Buffer.concat(this.chunks.map(chunk => chunk.buffer));
+        let content;
+
+        if (this.isImage) {
+            content = buffer.toString('base64');
+        } else {
+            content = buffer.toString('utf-8');
+        }
+
+        this.ws.send(JSON.stringify({
+            type: 'downloadComplete',
+            content: content,
+            url: this.url,
+            isImage: this.isImage
+        }));
     }
 
 }
