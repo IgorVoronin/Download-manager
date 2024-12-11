@@ -162,8 +162,11 @@ function updateDownloadProgress(progress) {
     console.log('Обновление прогресса:', progress);
     const percent = Math.min(Math.round((progress.downloadedSize / progress.totalSize) * 100), 100);
 
+    // Обновление статус бара
     document.querySelector('.progress-bar').style.width = `${percent}%`;
     document.querySelector('.progress-bar').setAttribute('aria-valuenow', percent);
+
+    // Обновление текстовой информации
     document.getElementById('fileSize').textContent = formatFileSize(progress.totalSize);
     document.getElementById('activeThreads').textContent = progress.activeThreads;
     document.getElementById('progressPercent').textContent = percent;

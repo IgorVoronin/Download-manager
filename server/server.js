@@ -42,6 +42,7 @@ class DownloadManager {
         this.totalSize = 0;
         this.downloadedSize = 0;
         this.isImage = url.match(/\.(jpg|jpeg|png|gif)$/i) || url.includes('~orig');
+        this.lastProgressUpdate = 0;
     }
 
     async start() {
@@ -119,28 +120,35 @@ class DownloadManager {
                 throw new Error(`Ошибка загрузки чанка: ${response.status} ${response.statusText}`);
             }
 
-            // Создаем читаемый поток
-            const reader = response.body.getReader();
+            // Получаем данные как поток
+            const chunks = [];
             let receivedLength = 0;
 
-            // Читаем данные по частям
-            while (true) {
-                const { done, value } = await reader.read();
-
-                if (done) break;
-
-                receivedLength += value.length;
-                this.downloadedSize += value.length;
+            response.body.on('data', (chunk) => {
+                chunks.push(chunk);
+                receivedLength += chunk.length;
+                this.downloadedSize += chunk.length;
 
                 // Отправляем обновление прогресса после каждого полученного чанка данных
-                this.sendProgress();
+                if (Date.now() - this.lastProgressUpdate >= config.download.progressUpdateInterval) {
+                    this.sendProgress();
+                    this.lastProgressUpdate = Date.now();
+                }
+            });
 
-                // Сохраняем полученные данные
-                this.chunks.push({
-                    start: start + receivedLength - value.length,
-                    buffer: Buffer.from(value)
+            await new Promise((resolve, reject) => {
+                response.body.on('end', () => {
+                    // Собираем все чанки в один буфер
+                    const buffer = Buffer.concat(chunks);
+                    this.chunks.push({
+                        start: start,
+                        buffer: buffer
+                    });
+                    resolve();
                 });
-            }
+
+                response.body.on('error', reject);
+            });
 
             this.activeThreads--;
             this.sendProgress();
