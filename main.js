@@ -53,7 +53,10 @@ function handleServerMessage(data) {
             displayUrlList(data.urls);
             break;
         case 'downloadProgress':
-            updateDownloadProgress(data.progress);
+            // Игнорируем обновления прогресса после завершения
+            if (!data.progress.isCompleted) {
+                updateDownloadProgress(data.progress);
+            }
             break;
         case 'downloadComplete':
             handleDownloadComplete(data.content, data.url, data.isImage);
@@ -180,7 +183,7 @@ function cleanupOldDownloads() {
             const newDownloads = Object.fromEntries(entries.slice(0, 5));
             localStorage.setItem('downloads', JSON.stringify(newDownloads));
 
-            console.log('Очищены старые загрузки, оставлены последние 5');
+            console.log('Очищены ст��рые загрузки, оставлены последние 5');
         }
     } catch (error) {
         console.error('Ошибка при очистке старых загрузок:', error);
@@ -189,10 +192,8 @@ function cleanupOldDownloads() {
 
 // Обработка завершения загрузки
 function handleDownloadComplete(content, url, isImage) {
-    console.log('Загрузка завершена для:', url);
-
     try {
-        // Пытаемся сохранить новую загрузку
+        // Сохраняем в localStorage
         const downloads = JSON.parse(localStorage.getItem('downloads') || '{}');
         downloads[url] = {
             content: content,
@@ -204,9 +205,7 @@ function handleDownloadComplete(content, url, isImage) {
             localStorage.setItem('downloads', JSON.stringify(downloads));
         } catch (e) {
             if (e.name === 'QuotaExceededError') {
-                console.log('Превышена квота хранилища, очищаем старые загрузки');
                 cleanupOldDownloads();
-                // Пробуем сохранить снова
                 localStorage.setItem('downloads', JSON.stringify(downloads));
             } else {
                 throw e;
@@ -215,8 +214,6 @@ function handleDownloadComplete(content, url, isImage) {
 
         // Обновляем список и показываем уведомление
         updateSavedContentList();
-
-        // Добавляем сообщение об успешной загрузке в блок прогресса
         document.querySelector('.download-info').innerHTML += `
             <div class="alert alert-success mt-3">
                 Загрузка завершена успешно!

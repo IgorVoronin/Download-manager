@@ -128,6 +128,19 @@ class DownloadManager {
         }));
     }
 
+    sendProgress() {
+        this.ws.send(JSON.stringify({
+            type: 'downloadProgress',
+            progress: {
+                totalSize: this.totalSize,
+                downloadedSize: this.downloadedSize,
+                activeThreads: this.activeThreads,
+                percent: Math.min(Math.round((this.downloadedSize / this.totalSize) * 100), 100),
+                isCompleted: this.isCompleted
+            }
+        }));
+    }
+
 }
 
 // Обработка WebSocket соединений
